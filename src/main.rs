@@ -33,6 +33,7 @@ fn game_logic(engine: &mut Engine, game_state: &mut GameState) {
     handle_collision_events(engine, game_state);
     handle_player_movement(engine);
     handle_block_mouse_input(engine, game_state);
+    reset_score(engine, game_state);
 }
 
 fn add_ui(game: &mut Game<GameState>) {
@@ -52,7 +53,8 @@ fn add_player_sprite(game: &mut Game<GameState>) {
 }
 
 fn handle_collision_events(engine: &mut Engine, game_state: &mut GameState) {
-    for event in engine.collision_events.drain(..) {
+    let events: Vec<_> = engine.collision_events.drain(..).collect();
+    for event in events {
         if event.state.is_begin() && event.pair.one_starts_with("player") {
             // remove the sprite the player collided with
             for label in [event.pair.0, event.pair.1] {
@@ -60,10 +62,27 @@ fn handle_collision_events(engine: &mut Engine, game_state: &mut GameState) {
                     engine.sprites.remove(&label);
                 }
             }
-
-            game_state.score += 1;
-            println!("Current Score: {}", game_state.score);
+            update_score(engine, game_state);
         }
+    }
+}
+
+fn update_score(engine: &mut Engine, game_state: &mut GameState) {
+    game_state.score += 1;
+    let score = engine.texts.get_mut("score").unwrap();
+    score.value = format!("Score: {}", game_state.score);
+    if game_state.score > game_state.high_score {
+        game_state.high_score = game_state.score;
+        let high_score = engine.texts.get_mut("high_score").unwrap();
+        high_score.value = format!("High Score: {}", game_state.high_score);
+    }
+}
+
+fn reset_score(engine: &mut Engine, game_state: &mut GameState) {
+    if engine.keyboard_state.pressed(KeyCode::R) {
+        game_state.score = 0;
+        let score = engine.texts.get_mut("score").unwrap();
+        score.value = format!("Score: {}", game_state.score);
     }
 }
 
