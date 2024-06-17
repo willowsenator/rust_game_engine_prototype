@@ -21,7 +21,7 @@ impl Default for GameState {
 
 fn main() {
     let mut game = Game::new();
-
+    game.audio_manager.play_music(MusicPreset::Classy8Bit, 0.2);
     add_player_sprite(&mut game);
     add_ui(&mut game);
 
@@ -59,6 +59,7 @@ fn handle_collision_events(engine: &mut Engine, game_state: &mut GameState) {
             // remove the sprite the player collided with
             for label in [event.pair.0, event.pair.1] {
                 if label != "player" {
+                    engine.audio_manager.play_sfx(SfxPreset::Minimize1, 0.4);
                     engine.sprites.remove(&label);
                 }
             }
