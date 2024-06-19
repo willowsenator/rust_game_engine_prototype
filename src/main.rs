@@ -1,11 +1,12 @@
+use rand::prelude::*;
 use rusty_engine::prelude::*;
 
 #[derive(Resource)]
 struct GameState {
     high_score: u32,
     score: u32,
-    block_index: i32,
-    //spawn_timer: Timer,
+    pub block_index: i32,
+    spawn_timer: Timer,
 }
 
 impl Default for GameState {
@@ -14,13 +15,22 @@ impl Default for GameState {
             high_score: 0,
             score: 0,
             block_index: 0,
-            //spawn_timer: Timer::from_seconds(1.0, TimerMode::Repeating),
+            spawn_timer: Timer::from_seconds(2.0, TimerMode::Repeating),
         }
     }
 }
 
 fn main() {
     let mut game = Game::new();
+
+    {
+        game.window_settings(Window {
+            title: "Rusty Engine - Tutorial".into(),
+            resolution: WindowResolution::new(1400.0, 500.0),
+            ..Default::default()
+        });
+    };
+
     game.audio_manager.play_music(MusicPreset::Classy8Bit, 0.2);
     add_player_sprite(&mut game);
     add_ui(&mut game);
@@ -30,10 +40,44 @@ fn main() {
 }
 
 fn game_logic(engine: &mut Engine, game_state: &mut GameState) {
+    quit_from_game(engine);
+    mantain_scores_in_edge_of_screen(engine);
     handle_collision_events(engine, game_state);
     handle_player_movement(engine);
     handle_block_mouse_input(engine, game_state);
+    put_blocks_on_timer(engine, game_state);
     reset_score(engine, game_state);
+}
+
+fn mantain_scores_in_edge_of_screen(engine: &mut Engine) {
+    // Offset to move text up and down
+    let offset = ((engine.time_since_startup_f64 * 3.0).cos() * 5.0) as f32;
+    let score = engine.texts.get_mut("score").unwrap();
+    score.translation.x = engine.window_dimensions.x / 2.0 - 80.0;
+    score.translation.y = engine.window_dimensions.y / 2.0 - 30.0 + offset;
+    let high_score = engine.texts.get_mut("high_score").unwrap();
+    high_score.translation.x = -engine.window_dimensions.x / 2.0 + 110.0;
+    high_score.translation.y = engine.window_dimensions.y / 2.0 - 30.0;
+}
+
+fn quit_from_game(engine: &mut Engine) {
+    if engine
+        .keyboard_state
+        .pressed_any(&[KeyCode::Escape, KeyCode::Q])
+    {
+        engine.should_exit = true;
+    }
+}
+
+fn put_blocks_on_timer(engine: &mut Engine, game_state: &mut GameState) {
+    if game_state.spawn_timer.tick(engine.delta).just_finished() {
+        let label = format!("block_{}", game_state.block_index);
+        game_state.block_index += 1;
+        let block = engine.add_sprite(&label, SpritePreset::RollingBlockSmall);
+        block.translation.x = thread_rng().gen_range(-550.0..550.0);
+        block.translation.y = thread_rng().gen_range(-325.0..325.0);
+        block.collision = true;
+    }
 }
 
 fn add_ui(game: &mut Game<GameState>) {
